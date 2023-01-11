@@ -44,11 +44,12 @@ This demo used a FREENOVE ESP32-WROVER-DEV controller with a breadboard and a bu
 <img width="259" alt="Screenshot 2023-01-10 at 11 44 18 PM" src="https://user-images.githubusercontent.com/70780576/211749904-5ab5d3cf-58b2-492b-9c50-04d7a307786b.png">
 
 
-- When finished click "Save" and the ESP32 will store the configuration and reset. On boot it will automatically connect to the stored SSID WiFi. The onboard Blue LED will flash when connecting and stay on if connected.
+- When finished click "Save" and the ESP32 will store the configuration and reset. On boot it will automatically connect to the stored SSID WiFi. The onboard Blue LED will flash when connecting and stay on if connected. 
 
 ------
 
-### NOTE:
+### Troubleshooting & Resetting:
+- If after you click Save and the WiFi doesn't connect, because of a invalid password possibly, then you can get back to the config screen by going to `192.168.4.1` in your browser.
 - If the onboard reset button is pressed twice (not too fast), then the ESP32 will reset to enter config mode and broadcast an AP to change settings.
 
 ----
