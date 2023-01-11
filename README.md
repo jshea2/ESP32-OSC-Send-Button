@@ -21,6 +21,7 @@ This demo used a FREENOVE ESP32-WROVER-DEV controller with a breadboard and a bu
    - If you leave the Static IP, Gateway and Subnet empty then the device will use DHCP to get an IP and connect.
 
 - When finished click "Save" and the ESP32 will store the configuration and reset. On boot it will automatically connect to the stored SSID WiFi. The onboard Blue LED will flash when connecting and stay on if connected.
+  - If after Save and the WiFi password is invalid and doesn't connect, then you can get back to the config screen by going to `192.168.4.1` in your browser.
 
 - If the onboard reset button is pressed twice (not too fast), then the ESP32 will reset to enter config mode and broadcast an AP to change settings.
 
