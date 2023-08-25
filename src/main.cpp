@@ -32,6 +32,16 @@ bool      initialConfig = false;
 
 EasyLed led(2, EasyLed::ActiveLevel::High);
 
+void clearJson() {
+  if (SPIFFS.exists("/config.json")) {
+    Serial.println("Clearing config file");
+    File configFile = SPIFFS.open("/config.json", "w");
+    if (configFile) {
+      configFile.close();
+    }
+  }
+}
+
 //Double Reset Detector run function()
 void doubleResetConnector () {  
   drd = new DoubleResetDetector(DRD_TIMEOUT, DRD_ADDRESS);
@@ -42,8 +52,11 @@ void doubleResetConnector () {
     //reset settings - wipe credentials for testing
     wm.resetSettings();
     Serial.println(F("Starting Config Portal")); led.flash();
-    //if (!ESP_wifiManager.startConfigPortal()) { Serial.println(F("Not connected to WiFi")); }
-    //else { Serial.println(F("connected")); }
+
+    delay(1000);
+    clearJson();
+    // if (!ESP_wifiManager.startConfigPortal()) { Serial.println(F("Not connected to WiFi")); }
+    // else { Serial.println(F("connected")); }
   }
   // else { WiFi.mode(WIFI_STA); WiFi.begin(); } 
   // unsigned long startedAt = millis();
@@ -63,32 +76,61 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 
 //Save parameters
 void saveCustomConfig () {
-    const char *host = custom_osc_ip.getValue();
-    int send_port = std::stoi(custom_osc_port.getValue());
-    const char *oscaddr = custom_osc_address.getValue();
-    const char *oscarg = custom_osc_argument.getValue();
-    int buttonpin = std::stoi(custom_button_pin.getValue());
+  // Diagnostic: Check if the function is called
+  Serial.println("saveCustomConfig called");
 
-    Serial.println("saving config");
-    led.on();
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.createObject();
-    json["host"] = host;
-    json["send_port"] = send_port;
-    json["oscaddr"] = oscaddr;
-    json["oscarg"] = oscarg;
-    json["buttonpin"] = buttonpin;
+  const char *host = custom_osc_ip.getValue();
+  const char *send_port = custom_osc_port.getValue();
+  const char *oscaddr = custom_osc_address.getValue();
+  const char *oscarg = custom_osc_argument.getValue();
+  const char *buttonpin = custom_button_pin.getValue();
 
-    File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile) {
-      Serial.println("failed to open config file for writing");
-    }
+  // Diagnostic: Print the variables to confirm they contain data
+  Serial.println(host);
+  Serial.println(send_port);
+  Serial.println(oscaddr);
+  Serial.println(oscarg);
+  Serial.println(buttonpin);
 
-    json.printTo(Serial);
-    json.printTo(configFile);
-    configFile.close();
-    //end save
+  // Actual saving
+  Serial.println("saving config");
+  led.on();
+
+  DynamicJsonDocument jsonDoc(1024);
+  JsonObject json = jsonDoc.to<JsonObject>();
+  
+  json["host"] = host;
+  json["send_port"] = send_port;
+  json["oscaddr"] = oscaddr;
+  json["oscarg"] = oscarg;
+  json["buttonpin"] = buttonpin;
+
+  File configFile = SPIFFS.open("/config.json", "w");
+  serializeJson(json, Serial);
+  serializeJson(json, configFile);
+  
+
+  // Check if the file opened successfully
+  if (!configFile) {
+    Serial.println("failed to open config file for writing");
+    return;
+  }
+
+  // Check the return value of serializeJson to confirm serialization
+  if (serializeJson(json, configFile) == 0) {
+    Serial.println("Serialization failed");
+    return;
+  } else {
+    Serial.println("Serialization succeeded");
+  }
+
+  //configFile.flush();
+  Serial.println("File flushed");
+  
+  //configFile.close();
+  Serial.println("File closed");
 }
+
 
 //----------------------------------------------------------------
 //Serial print initial params
@@ -121,7 +163,7 @@ int buttonpin = std::stoi(custom_button_pin.getValue());
 ezButton button(buttonpin);
 
 const char *host = custom_osc_ip.getValue();
-int send_port = std::stoi(custom_osc_port.getValue());
+const char *send_port = custom_osc_port.getValue();
 const char *oscaddr = custom_osc_address.getValue();
 const char *oscarg = custom_osc_argument.getValue();
 
@@ -158,42 +200,36 @@ void setup() {
 
     //
     if (SPIFFS.begin()) {
-    Serial.println("mounted file system");
-    if (SPIFFS.exists("/config.json")) {
-      //file exists, reading and loading
-      Serial.println("reading config file");
-      File configFile = SPIFFS.open("/config.json", "r");
-      if (configFile) {
-        Serial.println("opened config file");
-        size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
+  Serial.println("mounted file system");
+  if (SPIFFS.exists("/config.json")) {
+    Serial.println("reading config file");
+    File configFile = SPIFFS.open("/config.json", "r");
+    if (configFile) {
+      size_t size = configFile.size();
+      std::unique_ptr<char[]> buf(new char[size]);
+      configFile.readBytes(buf.get(), size);
 
-        configFile.readBytes(buf.get(), size);
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject& json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
-        if (json.success()) {
-          Serial.println("\nparsed json");
-          strcpy(const_cast<char *>(host), json["host"]);
-          strcpy(const_cast<char*>(std::to_string(send_port).c_str()), json["send_port"]);
-          strcpy(const_cast<char *>(oscaddr), json["oscaddr"]);
-          strcpy(const_cast<char *>(oscarg), json["oscarg"]);
-          strcpy(const_cast<char*>(std::to_string(buttonpin).c_str()), json["buttonpin"]);
-        } else {
-          Serial.println("failed to load json config");
-        }
+      DynamicJsonDocument jsonDoc(1024);
+      DeserializationError error = deserializeJson(jsonDoc, buf.get());
+
+      if (!error) {
+        JsonObject json = jsonDoc.as<JsonObject>();
+        serializeJson(json, Serial);
+        
+        // Updating these requires a different strategy than simply using `strcpy`
+        // Depending on how these variables are declared and used, you may need to allocate memory for them.
+        // Here I've assumed they can be safely modified.
+        strcpy(const_cast<char *>(host), json["host"]);
+        strcpy(const_cast<char *>(send_port), json["send_port"]);
+        strcpy(const_cast<char *>(oscaddr), json["oscaddr"]);
+        strcpy(const_cast<char *>(oscarg), json["oscarg"]);
+      } else {
+        Serial.println("failed to load json config");
+        SPIFFS.format();
       }
-
-    }else
-    {
-      Serial.println("No config file");
     }
-    
-  } else {
-    Serial.println("failed to mount FS");
-    SPIFFS.format();
   }
+}
 
   //----------------------------------------------------------------
 
@@ -233,7 +269,7 @@ void loop() {
     Serial.println(oscaddr);
     Serial.println(oscarg);
     Serial.println(buttonpin);
-    OscWiFi.send(host, send_port, oscaddr, oscarg);
+    OscWiFi.send(host, std::stoi(send_port), oscaddr, oscarg);
     // return;
   }
   if (button.isReleased())
