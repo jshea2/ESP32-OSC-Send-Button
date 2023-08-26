@@ -23,7 +23,7 @@ WiFiManagerParameter custom_button_pin("buttonpin", "Button Pin (GPIO)", "13", 2
   #error This code is intended to run on the ESP32 platform! Please check your Tools->Board setting.  
 #endif
 #include <ESP_WiFiManager.h>                    //https://github.com/khoih-prog/ESP_WiFiManager
-#define DRD_TIMEOUT             10
+#define DRD_TIMEOUT             0.1
 #define DRD_ADDRESS             0
 #include <ESP_DoubleResetDetector.h>            //https://github.com/khoih-prog/ESP_DoubleResetDetector
 DoubleResetDetector* drd;
@@ -31,6 +31,8 @@ const int PIN_LED       = 3;
 bool      initialConfig = false;
 
 EasyLed led(2, EasyLed::ActiveLevel::High);
+
+ezButton* button = nullptr;
 
 void clearJson() {
   if (SPIFFS.exists("/config.json")) {
@@ -159,20 +161,20 @@ void saveParamsCallback () {
 
 //----------------------------------------------------------------
 //Declare and link params to consts
-int buttonpin = std::stoi(custom_button_pin.getValue());
-ezButton button(buttonpin);
+const char *buttonpin = custom_button_pin.getValue();
 
 const char *host = custom_osc_ip.getValue();
 const char *send_port = custom_osc_port.getValue();
 const char *oscaddr = custom_osc_address.getValue();
 const char *oscarg = custom_osc_argument.getValue();
 
+//ezButton button(std::stoi(buttonpin));
+
 //----------------------------------------------------------------
 
 void setup() {
     WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP    
     Serial.begin(115200);
-    button.setDebounceTime(50);
     doubleResetConnector();
     led.flash();
     wm.setDarkMode(true);
@@ -223,13 +225,21 @@ void setup() {
         strcpy(const_cast<char *>(send_port), json["send_port"]);
         strcpy(const_cast<char *>(oscaddr), json["oscaddr"]);
         strcpy(const_cast<char *>(oscarg), json["oscarg"]);
-      } else {
+        strcpy(const_cast<char *>(buttonpin), json["buttonpin"]);
+        int buttonPinValue = std::stoi(buttonpin);
+        button = new ezButton(buttonPinValue);
+        button->setDebounceTime(50);
+        Serial.println(buttonpin);
+      }
+      else
+      {
         Serial.println("failed to load json config");
         SPIFFS.format();
       }
     }
   }
-}
+  ezButton button(std::stoi(buttonpin));
+    }
 
   //----------------------------------------------------------------
 
@@ -246,22 +256,26 @@ void setup() {
     Serial.println(WiFi.getMode());
         Serial.println("connected...yeey :)");
         saveCustomConfig();
+        Serial.println("Rebooting...");
+        //delay(4000); // Add a delay if necessary
+        //ESP.restart(1);
         // digitalWrite(3, HIGH);
     }
     else {
         Serial.println("Configportal running");
         led.flash();
     }
+    
 }
 
 void loop() {
     drd->loop();
     wm.process();
     OscWiFi.update();
-    button.loop();
+    button->loop();
 
     // put your main code here, to run repeatedly:
-    if(button.isPressed())
+    if(button->isPressed())
   {
     Serial.println("The button is pressed");
     Serial.println(host);
@@ -272,7 +286,7 @@ void loop() {
     OscWiFi.send(host, std::stoi(send_port), oscaddr, oscarg);
     // return;
   }
-  if (button.isReleased())
+  if (button->isReleased())
   {
     Serial.println("The button is released");
     //OscWiFi.send(host, send_port, "/off");
