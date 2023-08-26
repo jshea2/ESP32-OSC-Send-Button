@@ -256,7 +256,7 @@ void setup() {
     Serial.println(WiFi.getMode());
         Serial.println("connected...yeey :)");
         saveCustomConfig();
-        Serial.println("Rebooting...");
+        //Serial.println("Rebooting...");
         //delay(4000); // Add a delay if necessary
         //ESP.restart(1);
         // digitalWrite(3, HIGH);
