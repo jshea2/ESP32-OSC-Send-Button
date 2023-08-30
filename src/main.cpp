@@ -9,9 +9,10 @@
 WiFiManager wm;
 WiFiManagerParameter custom_osc_ip("oscip", "OSC IP", "", 16);
 WiFiManagerParameter custom_osc_port("oscport", "OSC Port", "53000", 8);
-WiFiManagerParameter custom_osc_address("oscaddress", "OSC Address", "/go", 8);
-WiFiManagerParameter custom_osc_argument("oscargument", "OSC Argument", "", 8);
-WiFiManagerParameter custom_button_pin("buttonpin", "Button Pin (GPIO)", "13", 2);
+
+WiFiManagerParameter custom_osc_address("oscaddress", "OSC Address", "/go", 24);
+WiFiManagerParameter custom_osc_argument("oscargument", "OSC Argument", "", 16);
+WiFiManagerParameter custom_button_pin("buttonpin", "Button Pin (GPIO)", "15", 2);
 
 //----------------------------------------------------------------
 //Double Reset Detector
